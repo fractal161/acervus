@@ -1,44 +1,5 @@
 #include "surfaces.h"
 
-
-const int SURFACE_WIDTH = 9;
-// NUM_SURFACES = std::pow(9, SURFACE_WIDTH - 1); //Maybe long long?
-const std::vector<std::vector<std::vector<int>>> orients{
-  { // T
-    {3, -1, 1, 1, 2, 1},
-    {2, 1, 3, 1},
-    {3, 0, 0, 1, 2, 1},
-    {2, -1, 1, 3}
-  },
-  { // J
-    {3, 0, -1, 1, 1, 2},
-    {2, 2, 3, 1},
-    {3, 0, 0, 2, 1, 1},
-    {2, 0, 1, 3}
-  },
-  { // Z
-    {3, -1, 0, 1, 2, 1},
-    {2, 1, 2, 2}
-  },
-  { // O
-    {2, 0, 2, 2}
-  },
-  { // S
-    {3, 0, 1, 1, 2, 1},
-    {2, -1, 2, 2}
-  },
-  { // L
-    {3, 1, 0, 2, 1, 1},
-    {2, 0, 3, 1},
-    {3, 0, 0, 1, 1, 2},
-    {2, -2, 1, 3}
-  },
-  { // I
-    {4, 0, 0, 0, 1, 1, 1, 1},
-    {1, 4}
-  }
-};
-
 int * intToSurface(int surface){
   // static int bumps[SURFACE_WIDTH - 1];
   int * bumps = new int[SURFACE_WIDTH - 1];
@@ -115,20 +76,21 @@ int * createRandSurface(){
 }
 
 // return nullptr if it isn't clean.
-int * addPieceToSurface(int * surface, int piece, int orientation, int position){
+int * addPieceToSurface(int * surface, int piece, int orientation, int position, bool check=true){
   // Check if piece is too far right.
   const std::vector<int>& pieceData = orients[piece][orientation];
   int width = pieceData[0];
-  if(position + width > SURFACE_WIDTH){
-    return nullptr;
-  }
-  // Check if surfaces align
-  for(int i = 0; i < width - 1; i++){
-    if(pieceData[i + 1] != surface[position + i]){
+  if(check){
+    if(position + width > SURFACE_WIDTH){
       return nullptr;
     }
+    // Check if surfaces align
+    for(int i = 0; i < width - 1; i++){
+      if(pieceData[i + 1] != surface[position + i]){
+        return nullptr;
+      }
+    }
   }
-  // static int newSurface[SURFACE_WIDTH - 1];
   int * newSurface = new int[SURFACE_WIDTH - 1];
   memcpy(newSurface, surface, sizeof(int) * (SURFACE_WIDTH - 1));
 
