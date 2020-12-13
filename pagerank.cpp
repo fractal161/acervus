@@ -26,18 +26,19 @@ float * ranks[2];
 
 class RankStats{
 private:
-  int size;
-  float totSquErr;
-  float totErr;
-  float maxErr;
+  int nSurfaces;
   int bestSurface;
   float bestRank;
+  float maxErr;
+  float totErr;
+  float totSquErr;
   float totRank;
 
 public:
-  void update();
+  RankStats();
+  void update(int row, int surface);
   void print();
-  RankStats merge(RankStats* otherStats);
+  void merge(RankStats* otherStats);
 
 };
 
@@ -96,44 +97,20 @@ int main(int argc, char *argv[]){
     int row = (i + 1) % 2;
     int prev = i % 2;
 
-    // Stats
-    float avgSquErr = 0;
-    float avgErr = 0;
-    float maxErr = 0;
-    int bestSurface = 0;
-    float bestRank = 0;
-    float avgRank = 0;
     auto startTime = std::chrono::steady_clock::now();
+    RankStats stats;
     for(int j = 0; j < NUM_SURFACES; j++){
       ranks[row][j] = rank2(row, j);
-      if(ranks[row][j] > bestRank){
-        bestSurface = j;
-        bestRank = ranks[row][j];
-      }
-      float err = abs(ranks[row][j] - ranks[prev][j]);
-      maxErr = std::max(maxErr, err);
-      avgErr += err;
-      avgSquErr += err * err;
-      avgRank += ranks[row][j];
+      stats.update(row, j);
     }
     auto endTime = std::chrono::steady_clock::now();
-    avgErr /= (float) NUM_SURFACES;
-    avgSquErr /= (float) NUM_SURFACES;
-    avgRank /= (float) NUM_SURFACES;
-    float stdErr = sqrt(avgSquErr - avgErr * avgErr);
-    // Want to print the max err and the avg error (maybe stdev also?). Put this in log file
+
     std::cout << "Iteration " << (i + 1) << " completed\n";
     std::cout << "Duration: " << std::chrono::duration_cast<pSeconds>(endTime - startTime).count() << "s\n";
-    std::cout << "Average rank: " << avgRank << "\n";
-    std::cout << "Max error: " << maxErr << "\n";
-    std::cout << "Average error: " << avgErr << "\n";
-    std::cout << "Standard deviation: " << stdErr << "\n\n";
-    std::cout << "Best surface:\n";
-    std::cout << printSurface(intToSurface(bestSurface)) << "\n" << std::endl;
+    stats.print();
 
     startTime = endTime;
   }
-
 
   auto trueEnd = std::chrono::steady_clock::now();
   std::cout << "Total duration: " <<
@@ -166,11 +143,46 @@ int main(int argc, char *argv[]){
   return 0;
 }
 
+RankStats::RankStats():
+nSurfaces(0),
+bestSurface(0),
+bestRank(0.0f),
+maxErr(0.0f),
+totErr(0.0f),
+totSquErr(0.0f),
+totRank(0.0f){}
 
+void RankStats::print(){
+  float avgRank = totRank / (float) nSurfaces;
+  float avgErr = totErr / (float) nSurfaces;;
+  float avgSquErr = totSquErr / (float) nSurfaces;
+  float stdErr = sqrt(avgSquErr - avgErr * avgErr);
+  std::cout << "Average rank: " << avgRank << "\n";
+  std::cout << "Max error: " << maxErr << "\n";
+  std::cout << "Average error: " << avgErr << "\n";
+  std::cout << "Standard deviation: " << stdErr << "\n\n";
+  std::cout << "Best surface:\n";
+  std::cout << printSurface(intToSurface(bestSurface)) << "\n" << std::endl;
+}
+
+void RankStats::update(int row, int surface){
+  int prev = (row + 1) % 2;
+  nSurfaces++;
+  if(ranks[row][surface] > bestRank){
+    bestSurface = surface;
+    bestRank = ranks[row][surface];
+  }
+  float err = abs(ranks[row][surface] - ranks[prev][surface]);
+  maxErr = std::max(maxErr, err);
+  totErr += err;
+  totSquErr += err * err;
+  totRank += ranks[row][surface];
+}
 
 void setRanks(int start, int end, int row, RankStats& stats){
+  int prev = (row + 1) % 2;
   for(int i = start; i < end; i++){
-    // ranks[row][i] = rank(row, i);
+    ranks[row][i] = rank2(row, i);
     // stats.update();
   }
 }
