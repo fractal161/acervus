@@ -1,6 +1,6 @@
 *.out
 analysis*.txt
-log.txt
+log*.txt
 todo.txt
 old.txt
 ranks*

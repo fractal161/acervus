@@ -7,13 +7,13 @@
 #include <math.h> // For stdev
 #include <vector>
 #include <chrono>
-
+#include <thread>
 
 const unsigned int NUM_SURFACES = std::pow(9, SURFACE_WIDTH - 1); //Maybe long long?
 const unsigned int RANK_SIZE = NUM_SURFACES * sizeof(float);
 const char * FILE_NAME = "ranks";
-const float initRank = 1.0e9;
-const int numThreads = 4;
+const float initRank = 1.0e9f;
+const int nThreads = 4;
 
 /*
 First index is the piece i,
@@ -42,7 +42,7 @@ public:
 
 };
 
-void setRanks(int start, int end, int row, RankStats& stats);
+void setRanks(int start, int end, int row, RankStats* stats);
 float rank2(int iter, int stack);
 void rankOrient2(int iter, int * surface, int piece, int orientation, int pos, float *pieceRanks);
 
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]){
     iters = atoi(argv[1]);
   }
 
-  if(stat_buf.st_size == 0){
+  if(true){//stat_buf.st_size == 0){
     std::cout << "Initializing ranks\n";
     for(int i = 0; i < NUM_SURFACES; i++){
       ranks[0][i] = initRank;
@@ -98,16 +98,30 @@ int main(int argc, char *argv[]){
     int prev = i % 2;
 
     auto startTime = std::chrono::steady_clock::now();
-    RankStats stats;
-    for(int j = 0; j < NUM_SURFACES; j++){
-      ranks[row][j] = rank2(row, j);
-      stats.update(row, j);
+
+    RankStats* stats = new RankStats[nThreads];
+
+    std::thread rankThreads[nThreads];
+
+    for(int i = 0; i < nThreads; i++){
+      int start = (i * NUM_SURFACES) / nThreads;
+      int end = ((i + 1) * NUM_SURFACES) / nThreads;
+      rankThreads[i] = std::thread(setRanks, start, end, row, stats+i);
     }
+
+    for(int i = 0; i < nThreads; i++){
+      rankThreads[i].join();
+    }
+    for(int i = 1; i < nThreads; i++){
+      stats[0].merge(stats+i);
+    }
+
     auto endTime = std::chrono::steady_clock::now();
 
     std::cout << "Iteration " << (i + 1) << " completed\n";
     std::cout << "Duration: " << std::chrono::duration_cast<pSeconds>(endTime - startTime).count() << "s\n";
-    stats.print();
+    stats[0].print();
+    delete[] stats;
 
     startTime = endTime;
   }
@@ -157,9 +171,9 @@ void RankStats::print(){
   float avgErr = totErr / (float) nSurfaces;;
   float avgSquErr = totSquErr / (float) nSurfaces;
   float stdErr = sqrt(avgSquErr - avgErr * avgErr);
-  std::cout << "Average rank: " << avgRank << "\n";
+  std::cout << "Avg rank: " << avgRank << "\n";
   std::cout << "Max error: " << maxErr << "\n";
-  std::cout << "Average error: " << avgErr << "\n";
+  std::cout << "Avg error: " << avgErr << "\n";
   std::cout << "Standard deviation: " << stdErr << "\n\n";
   std::cout << "Best surface:\n";
   std::cout << printSurface(intToSurface(bestSurface)) << "\n" << std::endl;
@@ -179,11 +193,22 @@ void RankStats::update(int row, int surface){
   totRank += ranks[row][surface];
 }
 
-void setRanks(int start, int end, int row, RankStats& stats){
-  int prev = (row + 1) % 2;
+void RankStats::merge(RankStats* otherStats){
+  nSurfaces += (*otherStats).nSurfaces;
+  if(bestRank < (*otherStats).bestRank){
+    bestSurface = (*otherStats).bestSurface;
+    bestRank = (*otherStats).bestRank;
+  }
+  maxErr = std::max(maxErr, (*otherStats).maxErr);
+  totErr += (*otherStats).totErr;
+  totSquErr += (*otherStats).totSquErr;
+  totRank += (*otherStats).totRank;
+}
+
+void setRanks(int start, int end, int row, RankStats* stats){
   for(int i = start; i < end; i++){
     ranks[row][i] = rank2(row, i);
-    // stats.update();
+    stats->update(row, i);
   }
 }
 
