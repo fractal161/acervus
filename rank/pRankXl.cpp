@@ -10,11 +10,13 @@
 #include <string>
 #include <thread>
 
-const unsigned int NUM_SURFACES = std::pow(9, SURFACE_WIDTH - 1);
+const unsigned int NUM_SURFACES = std::pow(9, SURFACE_WIDTH - 1) * 7; //Maybe long long?
 const unsigned int RANK_SIZE = NUM_SURFACES * sizeof(float);
-const char* FILE_NAME = "../data/ranksEv9";
+const char* FILE_NAME = "../data/ranksEv9.1";
 const float initRank = 0.0f;
 const int nThreads = 4;
+
+// Surface * 7 + pieceType
 
 float* ranks[2];
 
@@ -133,7 +135,7 @@ int main(int argc, char* argv[]){
         nextStack = j;
       }
     }
-    std::cout << printSurface(intToSurface(nextStack)) << "\n" << nextMax << "\n\n";
+    std::cout << printSurfaceAndPiece(intToSurface(nextStack / 7), nextStack % 7) << "\n" << nextMax << "\n\n";
     lastMax = nextMax;
   }
 
@@ -166,7 +168,7 @@ void RankStats::print(){
   std::cout << "Avg error: " << avgErr << "\n";
   std::cout << "Standard deviation: " << stdErr << "\n\n";
   std::cout << "Best surface:\n";
-  std::cout << printSurface(intToSurface(bestSurface)) << "\n" << bestRank << std::endl;
+  std::cout << printSurfaceAndPiece(intToSurface(bestSurface / 7), bestSurface % 7) << "\n" << bestRank << std::endl;
 }
 
 void RankStats::update(int row, int surface){
@@ -203,75 +205,123 @@ void setRanks(int start, int end, int row, RankStats* stats){
 }
 
 float rank2(int iter, int stack){
-  int* surface = intToSurface(stack);
+  int* surface = intToSurface(stack / 7);
+  int type = stack % 7;
   float pieceRanks[] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-
-  for(int i = 0; i < SURFACE_WIDTH; i++){
-    rankOrient2(iter, surface, I, 1, i, pieceRanks);
-  }
-  for(int i = 0; i < SURFACE_WIDTH - 1; i++){
-    if(surface[i] == -2){
-      rankOrient2(iter, surface, L, 3, i, pieceRanks);
+  switch(type){
+    case T:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == -1){
+        rankOrient2(iter, surface, T, 3, i, pieceRanks);
+      }
+      if(surface[i] == 1){
+        rankOrient2(iter, surface, T, 1, i, pieceRanks);
+      }
     }
-    if(surface[i] == -1){
-      rankOrient2(iter, surface, T, 3, i, pieceRanks);
-      rankOrient2(iter, surface, S, 1, i, pieceRanks);
+    for(int i = 0; i < SURFACE_WIDTH - 2; i++){
+      if(surface[i] == 0 && surface[i + 1] == 0){
+        rankOrient2(iter, surface, T, 0, i, pieceRanks);
+      }
+      if(surface[i] == -1 && surface[i + 1] == 1){
+        rankOrient2(iter, surface, T, 2, i, pieceRanks);
+      }
     }
-    if(surface[i] == 0){
-      rankOrient2(iter, surface, O, 0, i, pieceRanks);
-      rankOrient2(iter, surface, L, 1, i, pieceRanks);
-      rankOrient2(iter, surface, J, 3, i, pieceRanks);
+    break;
+    case J:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == 0){
+        rankOrient2(iter, surface, J, 3, i, pieceRanks);
+      }
+      if(surface[i] == 2){
+        rankOrient2(iter, surface, J, 1, i, pieceRanks);
+      }
     }
-    if(surface[i] == 1){
-      rankOrient2(iter, surface, T, 1, i, pieceRanks);
-      rankOrient2(iter, surface, Z, 1, i, pieceRanks);
+    for(int i = 0; i < SURFACE_WIDTH - 2; i++){
+      if(surface[i] == 0 && surface[i + 1] == 0){
+        rankOrient2(iter, surface, J, 2, i, pieceRanks);
+      }
+      if(surface[i] == 0 && surface[i + 1] == -1){
+        rankOrient2(iter, surface, J, 0, i, pieceRanks);
+      }
     }
-    if(surface[i] == 2){
-      rankOrient2(iter, surface, J, 1, i, pieceRanks);
+    break;
+    case Z:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == 1){
+        rankOrient2(iter, surface, T, 1, i, pieceRanks);
+      }
     }
-  }
-  for(int i = 0; i < SURFACE_WIDTH - 2; i++){
-    if(surface[i] == 0 && surface[i + 1] == 0){
-      rankOrient2(iter, surface, T, 0, i, pieceRanks);
-      rankOrient2(iter, surface, J, 2, i, pieceRanks);
-      rankOrient2(iter, surface, L, 2, i, pieceRanks);
+    for(int i = 0; i < SURFACE_WIDTH - 2; i++){
+      if(surface[i] == -1 && surface[i + 1] == 0){
+        rankOrient2(iter, surface, Z, 0, i, pieceRanks);
+      }
     }
-    if(surface[i] == -1 && surface[i + 1] == 1){
-      rankOrient2(iter, surface, T, 2, i, pieceRanks);
+    break;
+    case O:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == 0){
+        rankOrient2(iter, surface, O, 0, i, pieceRanks);
+      }
     }
-    if(surface[i] == 0 && surface[i + 1] == -1){
-      rankOrient2(iter, surface, J, 0, i, pieceRanks);
+    break;
+    case S:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == -1){
+        rankOrient2(iter, surface, S, 1, i, pieceRanks);
+      }
     }
-    if(surface[i] == -1 && surface[i + 1] == 0){
-      rankOrient2(iter, surface, Z, 0, i, pieceRanks);
+    for(int i = 0; i < SURFACE_WIDTH - 2; i++){
+      if(surface[i] == 0 && surface[i + 1] == 1){
+        rankOrient2(iter, surface, S, 0, i, pieceRanks);
+      }
     }
-    if(surface[i] == 0 && surface[i + 1] == 1){
-      rankOrient2(iter, surface, S, 0, i, pieceRanks);
+    break;
+    case L:
+    for(int i = 0; i < SURFACE_WIDTH - 1; i++){
+      if(surface[i] == -2){
+        rankOrient2(iter, surface, L, 3, i, pieceRanks);
+      }
+      if(surface[i] == 0){
+        rankOrient2(iter, surface, L, 1, i, pieceRanks);
+      }
     }
-    if(surface[i] == 1 && surface[i + 1] == 0){
-      rankOrient2(iter, surface, L, 0, i, pieceRanks);
+    for(int i = 0; i < SURFACE_WIDTH - 2; i++){
+      if(surface[i] == 0 && surface[i + 1] == 0){
+        rankOrient2(iter, surface, L, 2, i, pieceRanks);
+      }
+      if(surface[i] == 1 && surface[i + 1] == 0){
+        rankOrient2(iter, surface, L, 0, i, pieceRanks);
+      }
     }
-  }
-
-  for(int i = 0; i < SURFACE_WIDTH - 3; i++){
-    if(surface[i] == 0 && surface[i + 1] == 0 && surface[i + 2] == 0){
-      rankOrient2(iter, surface, I, 0, i, pieceRanks);
+    break;
+    case I:
+    for(int i = 0; i < SURFACE_WIDTH - 3; i++){
+      rankOrient2(iter, surface, I, 1, i, pieceRanks);
+      if(surface[i] == 0 && surface[i + 1] == 0 && surface[i + 2] == 0){
+        rankOrient2(iter, surface, I, 0, i, pieceRanks);
+      }
     }
+    rankOrient2(iter, surface, I, 1, SURFACE_WIDTH - 3, pieceRanks);
+    rankOrient2(iter, surface, I, 1, SURFACE_WIDTH - 2, pieceRanks);
+    break;
   }
 
   delete[] surface;
 
   float pieceTotal = pieceRanks[0] + pieceRanks[1] + pieceRanks[2] + pieceRanks[3] + pieceRanks[4] + pieceRanks[5] + pieceRanks[6];
-  return pieceTotal / 7.0f + 1.0f;
+  return pieceTotal * 9.0f / 56.0f - pieceRanks[type] * 7.0f / 56.0f + 1.0f;
 }
 
-void rankOrient2(int iter, int* surface, int piece, int orientation, int pos, float*pieceRanks){
+void rankOrient2(int iter, int * surface, int piece, int orientation, int pos, float* pieceRanks){
   iter = (iter + 1) % 2;
   int* newSurface = addPieceToSurface(surface, piece, orientation, pos, false);
   if(newSurface != nullptr && validSurface(newSurface)){
     int newNum = surfaceToInt(newSurface);
-    float newRank = ranks[iter][newNum];
-    pieceRanks[piece] = std::max(pieceRanks[piece], newRank);
+    // float newRank = ranks[iter][newNum];
+    // pieceRanks[piece] = std::max(pieceRanks[piece], newRank);
+    for(int i = 0; i < 7; i++){
+      pieceRanks[i] = std::max(pieceRanks[i], ranks[iter][newNum * 7 + i]);
+    }
   }
   delete[] newSurface;
 }

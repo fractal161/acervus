@@ -45,9 +45,10 @@ const std::vector<std::vector<std::vector<int>>> orients{
 
 
 
-int * intToSurface(int surface);
-int surfaceToInt(int * surface);
-std::string printSurface(int * surface);
-bool validSurface(int * surface);
-int * createRandSurface();
-int * addPieceToSurface(int * surface, int piece, int orientation, int position, bool check);
+int* intToSurface(int surface);
+int surfaceToInt(int* surface);
+std::string printSurface(int* surface);
+std::string printSurfaceAndPiece(int* surface, int type);
+bool validSurface(int* surface);
+int* createRandSurface();
+int* addPieceToSurface(int* surface, int piece, int orientation, int position, bool check);
