@@ -1,5 +1,5 @@
 #include "search.hpp"
-
+#include <iostream>
 /*
 STRUCTURE
 Most basic search algorithm is going left to right and hard dropping.
@@ -38,9 +38,11 @@ void BasicDfs::search(std::vector<Piece>& places, const Board& board, Piece& pie
   // std::cout << "Searching " << x << " " << y << " " << orient << "\n";
   // std::cout << "Visited: " << visited[piece.getX()][piece.getY()][piece.getOrient()] << "\n";
   // std::cout << "Overlap: " << board.overlap(piece) << "\n";
-  if(visited[x][y][orient] || board.overlap(piece)){
+  // if(!board.isEmpty()){
+  //   std::cout << "NOT EMPTY\n";
+  // }
+  if(board.overlap(piece) || visited[x][y][orient]){
     // std::cout << "STOP\n";
-    visited[x][y][orient] = true;
     return;
   }
   visited[x][y][orient] = true;

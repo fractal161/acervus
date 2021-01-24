@@ -1,39 +1,14 @@
 #pragma once
+#include <cstdint>
 #include "../rank/surfaces.hpp"
-#include <array>
-#include <vector>
-#include <utility>
+#include "constants.hpp"
 
 
-const int WIDTH = 10;
-const int HEIGHT = 20;
-const std::array<int, 7>nOrients = {4, 4, 2, 1, 2, 4, 2};
-const std::vector<std::array<std::pair<int, int>, 4>> pCoords[7] = {
-    {{{{1, 0}, {0, 0}, {0, 1}, {0, -1}}}, // T
-     {{{1, 0}, {0, 0}, {0, 1}, {-1, 0}}},
-     {{{0, -1}, {0, 0}, {0, 1}, {-1, 0}}},
-     {{{1, 0}, {0, 0}, {-1, 0}, {0, -1}}}},
-    {{{{0, -1}, {0, 0}, {0, 1}, {1, 1}}}, // J
-     {{{-1, 0}, {-1, 1}, {0, 0}, {1, 0}}},
-     {{{-1, -1}, {0, -1}, {0, 0}, {0, 1}}},
-     {{{-1, 0}, {0, 0}, {1, -1}, {1, 0}}}},
-    {{{{0, -1}, {0, 0}, {1, 0}, {1, 1}}}, // Z
-     {{{-1, 1}, {0, 0}, {0, 1}, {1, 0}}}},
-    {{{{0, -1}, {0, 0}, {1, -1}, {1, 0}}}}, // O
-    {{{{0, 0}, {0, 1}, {1, -1}, {1, 0}}}, // S
-     {{{-1, 0}, {0, 0}, {0, 1}, {1, 1}}}},
-    {{{{0, -1}, {0, 0}, {0, 1}, {1, -1}}}, // L
-     {{{-1, 0}, {0, 0}, {1, 0}, {1, 1}}},
-     {{{-1, 1}, {0, -1}, {0, 0}, {0, 1}}},
-     {{{-1, -1}, {-1, 0}, {0, 0}, {1, 0}}}},
-    {{{{0, -2}, {0, -1}, {0, 0}, {0, 1}}}, // I
-     {{{-2, 0}, {-1, 0}, {0, 0}, {1, 0}}}}};
 
 class Piece{
 private:
-       // MIGHT HAVE TO REARRANGE THESE (he does like y then x or something)
+
   int type;
-  // std::array<int,3> pos;
   int x;
   int y;
   int orient;
@@ -44,7 +19,7 @@ public:
   ~Piece();
   int numOrients() const;
   const std::array<std::pair<int, int>,4>& getOffs() const;
-  int getX () const;
+  int getX() const;
   int getY() const;
   int getOrient() const;
   void shift(int off);
@@ -52,20 +27,30 @@ public:
   void drop(int off);
   void setPos(int x, int y, int orient);
   void operator =(const Piece& p);
+  bool inBounds() const;
+  uint64_t getBits() const;
 };
 
 class Board{
 private:
-  std::array<std::array<bool, WIDTH>, HEIGHT> cells;
-  friend class Search;
+  // bits 0-9 are filled with 1s, bits 10-209 are normal, bits 210-229 are 0s.
+  std::array<uint64_t, 4> cells;
+  std::array<uint64_t*, 20> rows;
 public:
   Board();
-  bool getCell(int x, int y) const;
-  void setCell(int x, int y);
-  bool overlap(const Piece& piece) const;
-  void place(const Piece& piece); //, position pos);
+  bool getCell(int x, int y) const; // not bad yet?
+  void setCell(int x, int y, bool value); // not bad yet?
+  bool overlap(const Piece& piece) const; // BAD
+  void place(const Piece& piece);
   void remove(const Piece& piece);
   //Bitwise operators to make this fast.
-  int clearRows();//Bottom row mask is 2^0 + 2^20 + ..., bitshift for the rest
-  void toSurface(int* buffer);
+  int clearRows();
+  void toSurface(int* buffer); // BAD
+  bool isEmpty() const;
 };
+
+/*
+Need to figure out coordinate system. Here's a list of all functions that directly depend on it:
+GameState::toString()
+Controller::move()
+*/

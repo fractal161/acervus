@@ -17,13 +17,12 @@ protected:
 
 public:
   int score;
-  GameState(int nSeed, Search& nSearch);
-  ~GameState();
+  GameState(int nSeed, Search* nSearch); //Take a pointer you idiot
+  // ~GameState();
   int findPlace();
   void overlap();
   void setPiece(const Piece& nPiece);
   void place();
-  void place(const Piece& nPiece);
   void update();
   void search(std::vector<Piece>& places);
   std::string toString();

@@ -1,8 +1,8 @@
 #include "gameState.hpp"
 #include <iostream>
 
-GameState::GameState(int nSeed, Search& nSearch){
-  pSearch = &nSearch;
+GameState::GameState(int nSeed, Search* nSearch){
+  pSearch = nSearch;
   seed = nSeed;
   score = 0;
   // srand(nSeed);
@@ -10,7 +10,7 @@ GameState::GameState(int nSeed, Search& nSearch){
   next = Piece(rand() % 7);
 }
 
-GameState::~GameState(){}
+// GameState::~GameState(){}
 
 void GameState::setPiece(const Piece& nPiece){
   piece = nPiece;
@@ -23,9 +23,11 @@ void GameState::place(){
 
 
 void GameState::search(std::vector<Piece>& places){
-  std::cout << this->toString() << "\n";
+  // std::cout << "Before search\n";
+  // std::cout << this->toString() << "\n";
   pSearch->search(places, board, piece);
-  std::cout << this->toString() << "\n";
+  // std::cout << "After search\n";
+  // std::cout << this->toString() << "\n";
   pSearch->clean();
 }
 

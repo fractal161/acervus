@@ -10,7 +10,8 @@ int main(){
   std::cout << "Lets play Tetris!\n\n";
   using pSeconds = std::chrono::duration<double, std::ratio<1, 1>>;
   auto trueStart = std::chrono::steady_clock::now();
-  int n = 1; // 1000 for profiling
+  bool manual = false;
+  int n = 10000; // 10000 for profiling
   int tScore = 0;
   srand(4304);
   Controller controller;
@@ -20,17 +21,18 @@ int main(){
     int seed = 0;
     // std::cout << "Using seed " << seed << "\n";
     BasicDfs pSearch;
-    GameState state(seed, pSearch);
+    GameState state(seed, &pSearch);
     bool gameOver = false;
     while(!gameOver){
       // std::cout << state.toString() << "\n";
       // std::cout << "Listing final resting positions..." << "\n";
-      std::vector<Piece> places;
-      state.search(places);
-      // std::cout << state.toString() << "\n";
-      for(auto p : places){
-        std::cout << p.getX() << " " << p.getY() << " " << p.getOrient() << "\n";
-      }
+      // std::vector<Piece> places;
+      // state.search(places);
+      // // std::cout << state.toString() << "\n";
+      // for(auto& p : places){
+      //   std::cout << p.getX() << " " << p.getY() << " " << p.getOrient() << "\n";
+      // }
+      // return 0;
       Piece rest = controller.move(state);
       if(rest.getX() == -1){
         // std::cout << "Game over!\n";
@@ -49,20 +51,27 @@ int main(){
       // std::cin >> orient;
       // orient %= 4;
       // state.setCpos(x, y, orient);
-      std::cout << state.toString() << "\n";
-      std::cout << "Please confirm. ";
-      std::cin.get();
+      if(manual){
+        std::cout << state.toString() << "\n";
+        std::cout << "Please confirm. ";
+        std::cin.get();
+      }
       // std::cin.clear();
       // std::cin.get();
       state.place();
       state.update();
       // Do some stuff to lock and generate new pieces.
+
     }
-    std::cout << state.score << "\n";
+    // std::cout << state.score << "\n";
     tScore += state.score;
+    if(i % (n / 100) == 0){
+      std::cout << "Game " << i << " completed\n";
+    }
   }
   std::cout << "Average score: " << (double) tScore / n << "\n";
   auto trueEnd = std::chrono::steady_clock::now();
-  std::cout << "Total duration: " <<
-    std::chrono::duration_cast<pSeconds>(trueEnd - trueStart).count() << "s\n\n";
+  double dTime  = std::chrono::duration_cast<pSeconds>(trueEnd - trueStart).count();
+  std::cout << "Total duration: " << dTime << "s\n";
+  std::cout << "Pieces per second: " << (double) (tScore + n) / dTime << "\n\n";
 }

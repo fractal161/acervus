@@ -28,6 +28,7 @@ Piece Controller::move(GameState& state){
   std::vector<Piece> places;
   places.reserve(64);
   state.search(places);
+  // std::cout << state.toString() << "\n";
   float maxValue = 0.0f;
   Piece pBest;
   int* bSurface = new int[WIDTH - 2];
@@ -38,14 +39,14 @@ Piece Controller::move(GameState& state){
     // std::cout << state.toString() << "\n";
     // Check if holes are formed (see if the cell directly below any piece cell is empty).
     std::array<std::pair<int, int>, 4> pOffs = p.getOffs();
-    bool holes = false;
+    bool bad = false;
     for(auto& off : pOffs){
-      if(off.first + p.getY() + 1 < HEIGHT && !state.board.getCell(off.second + p.getX(), off.first + p.getY() + 1)){
-        holes = true;
+      if(off.first + p.getY() + 1 >= 0 && off.first + p.getY() + 1 < HEIGHT && !state.board.getCell(off.second + p.getX(), off.first + p.getY() + 1)){
+        bad = true;
         break;
       }
     }
-    if(holes){
+    if(bad){
       // std::cout << "Holes?\n";
       state.board.remove(p);
       continue;
@@ -54,13 +55,13 @@ Piece Controller::move(GameState& state){
     state.board.toSurface(bSurface);
     for(int i = 0; i < WIDTH - 2; i++){
       if(bSurface[i] < -4 || bSurface[i] > 4){
-        holes = true;
+        bad = true;
         break;
       }
       // if(bSurface[i] < -4) bSurface[i] = -4;
       // if(bSurface[i] > 4) bSurface[i] = 4;
     }
-    if(holes){
+    if(bad){
       // std::cout << "Holes?\n";
       state.board.remove(p);
       // delete[] bSurface;

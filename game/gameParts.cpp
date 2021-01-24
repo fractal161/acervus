@@ -1,4 +1,5 @@
 #include "gameParts.hpp"
+#include <iostream>
 
 Piece::Piece(){
   type = -1;
@@ -56,56 +57,131 @@ void Piece::operator =(const Piece& p){
   orient = p.orient;
 }
 
-Board::Board(){
-  for(int i = 0; i < HEIGHT; i++){
-    for(int j = 0; j < WIDTH; j++){
-      cells[i][j] = false;
-    }
-  }
-  // cells[HEIGHT - 1][0] = true;
-  // cells[HEIGHT - 1][WIDTH - 2] = true;
+bool Piece::inBounds() const{
+  const std::array<int, 4>& lims = pLimits[type][orient];
+  return x >= lims[2] &&
+    x <= lims[3] - 1 && // CHANGED
+    // y >= lims[0] &&
+    y <= lims[1];
 }
 
-bool Board::getCell(int y, int x) const{
-  return cells[x][y]; // Dependent on coords
+//
+uint64_t Piece::getBits() const{
+  uint64_t bits = pBits[type][orient];
+  if(x < 2){
+    return (bits << (2 - x));
+  }
+  return (bits >> (x - 2));
 }
-void Board::setCell(int y, int x){
-  cells[x][y] = true; // Dependent on coords
+
+Board::Board(){
+  cells = {0x3FF, 0x0, 0x0, 0x0};
+  rows[0] = &cells[0];
+  for(int i = 0; i < 20; i++){
+    // Assign pointers to each row+stuff above row
+    rows[i] = (uint64_t*)(((uint8_t*) rows[0]) + (5 * i) / 4);
+  }
+}
+
+bool Board::getCell(int x, int y) const{
+  int index = 209 - 10 * y - x;
+  uint64_t mask = (uint64_t) 1 << (index % 64);
+  return cells[index / 64] & mask;
+   // Dependent on coords
+}
+
+void Board::setCell(int x, int y, bool value){
+  int index = 209 - 10 * y - x;
+  if(value){
+    uint64_t mask = (uint64_t) 1 << (index % 64);
+    cells[index / 64] |= mask;
+  }
+  else{
+    uint64_t mask = ~((uint64_t) 1 << (index % 64));
+    cells[index / 64] &= mask;
+  }
+  // uint64_t* row = rows[19 - y];
+  // int offset = ((19 - y) << 1) & 7;
+  // if(value){
+  //   uint64_t mask = 1 << (19 - x + offset);
+  //   *row |= mask;
+  // }
+  // else{
+  //   uint64_t mask = ~(1 << (19 - x + offset));
+  //   *row &= mask;
+  // }
+}
+
+void printRows(uint64_t thing, int n){
+  std::string result = "";
+  for(int i = 0; i < n; i++){
+    result = "\n" + result;
+    for(int j = 0; j < 10; j++){
+      int bit = thing % 2;
+      char nxt = '0' + bit;
+      result = nxt + result;
+      thing >>= 1;
+    }
+  }
+  std::cout << result;
 }
 
 bool Board::overlap(const Piece& piece) const{
-  const std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
-  int px = piece.getX();
-  int py = piece.getY();
-  for(auto& off : pOffs){
-    int x = off.second + px;
-    int y = off.first + py;
-    if(x < 0 || x > WIDTH - 2 || //CHANGED FROM NORMAL
-      y < -2 || y > HEIGHT - 1 ||
-      (y >= 0 && cells[y][x])) return true;
-      // ^ unnecessary without the change
-  }
-  return false;
+  if(!piece.inBounds()) return true;
+
+  const uint64_t bits = piece.getBits();
+  uint64_t* row = rows[19 - piece.getY()];
+  int offset = ((19 - piece.getY()) << 1) & 7;
+  return (*row >> offset) & bits;
+  // if(res){
+  //   printRows((*row >> offset), 4);
+  //   std::cout << "\n";
+  //   printRows(bits, 4);
+  //   std::cout << "\n";
+  //   std::cout << "Overlap at " << piece.getX() << " " << piece.getY() << "\n";
+  //
+  // }
+  // const std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
+  // int px = piece.getX();
+  // int py = piece.getY();
+  // // Check if piece is inbounds
+  // for(auto& off : pOffs){
+  //   int x = off.second + px;
+  //   int y = off.first + py;
+  //   if(y >= 0 && getCell(x, y)) return true;
+  //     // ^ unnecessary without the change
+  // }
+  // std::cout << "No overlap at " << px << " " << py << "\n";
+  // return false;
 }
 
 
 // Assumes placement is valid
 void Board::place(const Piece& piece){
-  std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
-  int px = piece.getX();
-  int py = piece.getY();
-  for(auto& off : pOffs){
-    cells[off.first + py][off.second + px] = true;
-  }
+  const uint64_t bits = piece.getBits();
+  uint64_t* row = rows[19 - piece.getY()];
+  int offset = ((19 - piece.getY()) << 1) & 7;
+  *row |= bits << offset;
+  cells[3] &= 0x1FFFF;
 }
 
 void Board::remove(const Piece& piece){
-  std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
-  int px = piece.getX();
-  int py = piece.getY();
-  for(auto& off : pOffs){
-    cells[off.first + py][off.second + px] = false;
+  const uint64_t bits = piece.getBits();
+  uint64_t* row = rows[19 - piece.getY()];
+  int offset = ((19 - piece.getY()) << 1) & 7;
+  *row &= ~(bits << offset);
+}
+
+bool Board::isEmpty() const{
+  if(cells[0] >> 10){
+    return false;
   }
+  for(int i = 1; i < 4; i++){
+    if(cells[i]){
+      return false;
+    }
+  }
+  return true;
 }
 
 int Board::clearRows(){
@@ -113,7 +189,7 @@ int Board::clearRows(){
   for(int i = HEIGHT - 1; i >= 0; i--){
     bool full = true;
     for(int j = 0; j < WIDTH - 1; j++){ // CHANGED
-      if(!cells[i][j]){
+      if(!getCell(j, i)){
         full = false;
         break;
       }
@@ -121,11 +197,11 @@ int Board::clearRows(){
     if(full){
       for(int j = i; j > 0; j--){
         for(int k = 0; k < WIDTH; k++){
-          cells[j][k] = cells[j - 1][k];
+          setCell(k, j, getCell(k, j - 1));
         }
       }
       for(int j = 0; j < WIDTH; j++){
-        cells[0][j] = false;
+        setCell(j, 0, false);
       }
       clear++;
       i++;
@@ -139,7 +215,7 @@ void Board::toSurface(int* bumps){
   // First column height.
   int col = 0;
   for(int i = 0; i < HEIGHT; i++){
-    if(cells[i][0]){
+    if(getCell(0, i)){
       col = HEIGHT - i;
       break;
     }
@@ -148,7 +224,7 @@ void Board::toSurface(int* bumps){
   for(int j = 1; j < WIDTH - 1; j++){
     int nCol = 0;
     for(int i = 0; i < HEIGHT; i++){
-      if(cells[i][j]){
+      if(getCell(j, i)){
         nCol = HEIGHT - i;
         break;
       }
