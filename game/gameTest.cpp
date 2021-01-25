@@ -65,9 +65,9 @@ int main(){
     }
     // std::cout << state.score << "\n";
     tScore += state.score;
-    if(i % (n / 100) == 0){
-      std::cout << "Game " << i << " completed\n";
-    }
+    // if(i % (n / 100) == 0){
+    //   std::cout << "Game " << i << " completed\n";
+    // }
   }
   std::cout << "Average score: " << (double) tScore / n << "\n";
   auto trueEnd = std::chrono::steady_clock::now();

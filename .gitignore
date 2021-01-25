@@ -1,6 +1,7 @@
 *.out
-analysis*.txt
-log*.txt
-todo.txt
-old.txt
-ranks*
+
+data/*
+game/obj/*
+game/pobj/*
+game/gameTest
+game/profGameTest

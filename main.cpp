@@ -1,6 +1,6 @@
 // Sketch of what needs to happen
 /*
-Store all ranks in "surfaces." Use mmap to load each value into a gigantic array for quick lookup.
+Store all ranks in "ranks." Use mmap to load each value into a gigantic array for quick lookup.
 
 Write a library for manipulating surfaces (adding pieces, evaluating decisions, etc.)
 

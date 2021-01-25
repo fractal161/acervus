@@ -85,20 +85,20 @@ Board::Board(){
 
 bool Board::getCell(int x, int y) const{
   int index = 209 - 10 * y - x;
-  uint64_t mask = (uint64_t) 1 << (index % 64);
-  return cells[index / 64] & mask;
+  uint64_t mask = (uint64_t) 1 << (index & 63);
+  return cells[(index >> 6)] & mask;
    // Dependent on coords
 }
 
 void Board::setCell(int x, int y, bool value){
   int index = 209 - 10 * y - x;
   if(value){
-    uint64_t mask = (uint64_t) 1 << (index % 64);
-    cells[index / 64] |= mask;
+    uint64_t mask = (uint64_t) 1 << (index & 63);
+    cells[(index >> 6)] |= mask;
   }
   else{
-    uint64_t mask = ~((uint64_t) 1 << (index % 64));
-    cells[index / 64] &= mask;
+    uint64_t mask = ~((uint64_t) 1 << (index & 63));
+    cells[(index >> 6)] &= mask;
   }
   // uint64_t* row = rows[19 - y];
   // int offset = ((19 - y) << 1) & 7;
@@ -130,46 +130,25 @@ bool Board::overlap(const Piece& piece) const{
   if(!piece.inBounds()) return true;
 
   const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  return (*row >> offset) & bits;
-  // if(res){
-  //   printRows((*row >> offset), 4);
-  //   std::cout << "\n";
-  //   printRows(bits, 4);
-  //   std::cout << "\n";
-  //   std::cout << "Overlap at " << piece.getX() << " " << piece.getY() << "\n";
-  //
-  // }
-  // const std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
-  // int px = piece.getX();
-  // int py = piece.getY();
-  // // Check if piece is inbounds
-  // for(auto& off : pOffs){
-  //   int x = off.second + px;
-  //   int y = off.first + py;
-  //   if(y >= 0 && getCell(x, y)) return true;
-  //     // ^ unnecessary without the change
-  // }
-  // std::cout << "No overlap at " << px << " " << py << "\n";
-  // return false;
+  int tmp = 19 - piece.getY();
+  return (*rows[tmp] >> (((tmp) << 1) & 7)) & bits;
 }
 
 
 // Assumes placement is valid
 void Board::place(const Piece& piece){
   const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  *row |= bits << offset;
+  int tmp = 19 - piece.getY();
+  int offset = ((tmp) << 1) & 7;
+  *rows[tmp] |= bits << offset;
   cells[3] &= 0x1FFFF;
 }
 
 void Board::remove(const Piece& piece){
   const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  *row &= ~(bits << offset);
+  int tmp = 19 - piece.getY();
+  int offset = ((tmp) << 1) & 7;
+  *rows[tmp] &= ~(bits << offset);
 }
 
 bool Board::isEmpty() const{
