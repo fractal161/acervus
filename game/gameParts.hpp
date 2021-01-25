@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <gmpxx.h>
 #include "../rank/surfaces.hpp"
 #include "constants.hpp"
 
@@ -28,14 +29,13 @@ public:
   void setPos(int x, int y, int orient);
   void operator =(const Piece& p);
   bool inBounds() const;
-  uint64_t getBits() const;
+  mpz_class getBits() const;
 };
 
 class Board{
 private:
   // bits 0-9 are filled with 1s, bits 10-209 are normal, bits 210-229 are 0s.
-  std::array<uint64_t, 4> cells;
-  std::array<uint64_t*, 20> rows;
+  mpz_class cells;
 public:
   Board();
   bool getCell(int x, int y) const; // not bad yet?

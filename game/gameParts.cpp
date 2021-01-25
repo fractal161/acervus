@@ -60,14 +60,14 @@ void Piece::operator =(const Piece& p){
 bool Piece::inBounds() const{
   const std::array<int, 4>& lims = pLimits[type][orient];
   return x >= lims[2] &&
-    x <= lims[3] - 1 && // CHANGED
+    x < lims[3] && // CHANGED
     // y >= lims[0] &&
     y <= lims[1];
 }
 
 //
-uint64_t Piece::getBits() const{
-  uint64_t bits = pBits[type][orient];
+mpz_class Piece::getBits() const{
+  mpz_class bits = pBits[type][orient];
   if(x < 2){
     return (bits << (2 - x));
   }
@@ -75,30 +75,32 @@ uint64_t Piece::getBits() const{
 }
 
 Board::Board(){
-  cells = {0x3FF, 0x0, 0x0, 0x0};
-  rows[0] = &cells[0];
-  for(int i = 0; i < 20; i++){
-    // Assign pointers to each row+stuff above row
-    rows[i] = (uint64_t*)(((uint8_t*) rows[0]) + (5 * i) / 4);
-  }
+  // cells = {0x3FF, 0x0, 0x0, 0x0};
+  // rows[0] = &cells[0];
+  // for(int i = 0; i < 20; i++){
+  //   // Assign pointers to each row+stuff above row
+  //   rows[i] = (uint64_t*)(((uint8_t*) rows[0]) + (5 * i) / 4);
+  // }
+  cells = 0x3FF;
 }
 
 bool Board::getCell(int x, int y) const{
-  int index = 209 - 10 * y - x;
-  uint64_t mask = (uint64_t) 1 << (index % 64);
-  return cells[index / 64] & mask;
-   // Dependent on coords
+  return mpz_tstbit(cells.get_mpz_t(), 209 - 10 * y - x);
+  // return cells[index / 64] & mask;
+  //  // Dependent on coords
+  // uint64_t* row = rows[19 - y];
+  // int offset = ((19 - y) << 1) & 7;
+  // uint64_t mask = (uint64_t) 1 << (19 - x + offset);
+  // return *row & mask;
 }
 
 void Board::setCell(int x, int y, bool value){
   int index = 209 - 10 * y - x;
   if(value){
-    uint64_t mask = (uint64_t) 1 << (index % 64);
-    cells[index / 64] |= mask;
+    mpz_setbit(cells.get_mpz_t(), 209 - 10 * y - x);
   }
   else{
-    uint64_t mask = ~((uint64_t) 1 << (index % 64));
-    cells[index / 64] &= mask;
+    mpz_clrbit(cells.get_mpz_t(), 209 - 10 * y - x);
   }
   // uint64_t* row = rows[19 - y];
   // int offset = ((19 - y) << 1) & 7;
@@ -128,60 +130,56 @@ void printRows(uint64_t thing, int n){
 
 bool Board::overlap(const Piece& piece) const{
   if(!piece.inBounds()) return true;
-
-  const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  return (*row >> offset) & bits;
-  // if(res){
-  //   printRows((*row >> offset), 4);
-  //   std::cout << "\n";
-  //   printRows(bits, 4);
-  //   std::cout << "\n";
-  //   std::cout << "Overlap at " << piece.getX() << " " << piece.getY() << "\n";
-  //
-  // }
-  // const std::array<std::pair<int, int>,4> pOffs = piece.getOffs();
-  // int px = piece.getX();
-  // int py = piece.getY();
-  // // Check if piece is inbounds
-  // for(auto& off : pOffs){
-  //   int x = off.second + px;
-  //   int y = off.first + py;
-  //   if(y >= 0 && getCell(x, y)) return true;
-  //     // ^ unnecessary without the change
-  // }
-  // std::cout << "No overlap at " << px << " " << py << "\n";
-  // return false;
+  int tmp = 19 - piece.getY();
+  mpz_class bits = piece.getBits();
+  mpz_mul_2exp(bits.get_mpz_t(), bits.get_mpz_t(), 10 * tmp);
+  // uint64_t* row = rows[tmp];
+  mpz_class result;
+  mpz_and(result.get_mpz_t(), cells.get_mpz_t(), bits.get_mpz_t());
+  return cmp(result, 0) != 0;
 }
 
 
 // Assumes placement is valid
 void Board::place(const Piece& piece){
-  const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  *row |= bits << offset;
-  cells[3] &= 0x1FFFF;
+  // const uint64_t bits = piece.getBits();
+  // uint64_t* row = rows[19 - piece.getY()];
+  // int offset = ((19 - piece.getY()) << 1) & 7;
+  // *row |= bits << offset;
+  // cells[3] &= 0x1FFFF;
+  int tmp = 19 - piece.getY();
+  mpz_class bits = piece.getBits();
+  mpz_mul_2exp(bits.get_mpz_t(), bits.get_mpz_t(), 10 * tmp);
+  mpz_ior(cells.get_mpz_t(), cells.get_mpz_t(), bits.get_mpz_t());
+  mpz_class mask = 1;
+  mpz_mul_2exp(mask.get_mpz_t(), mask.get_mpz_t(), 210);
+  mask -= 1;
+  mpz_and(cells.get_mpz_t(), cells.get_mpz_t(), mask.get_mpz_t());
 }
 
 void Board::remove(const Piece& piece){
-  const uint64_t bits = piece.getBits();
-  uint64_t* row = rows[19 - piece.getY()];
-  int offset = ((19 - piece.getY()) << 1) & 7;
-  *row &= ~(bits << offset);
+  // const uint64_t bits = piece.getBits();
+  // uint64_t* row = rows[19 - piece.getY()];
+  // int offset = ((19 - piece.getY()) << 1) & 7;
+  // *row &= ~(bits << offset);
+  int tmp = 19 - piece.getY();
+  mpz_class bits = piece.getBits();
+  mpz_mul_2exp(bits.get_mpz_t(), bits.get_mpz_t(), 10 * tmp);
+  mpz_com(bits.get_mpz_t(), bits.get_mpz_t());
+  mpz_and(cells.get_mpz_t(), cells.get_mpz_t(), bits.get_mpz_t());
 }
 
 bool Board::isEmpty() const{
-  if(cells[0] >> 10){
-    return false;
-  }
-  for(int i = 1; i < 4; i++){
-    if(cells[i]){
-      return false;
-    }
-  }
-  return true;
+  return cmp(cells, 0x3FF) != 0;
+  // if(cells[0] >> 10){
+  //   return false;
+  // }
+  // for(int i = 1; i < 4; i++){
+  //   if(cells[i]){
+  //     return false;
+  //   }
+  // }
+  // return true;
 }
 
 int Board::clearRows(){
