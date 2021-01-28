@@ -21,6 +21,7 @@ public:
   const std::array<std::pair<int, int>,4>& getOffs() const;
   int getX() const;
   int getY() const;
+  int getType() const;
   int getOrient() const;
   void shift(int off);
   void rotate(int amt);
@@ -36,6 +37,8 @@ private:
   // bits 0-9 are filled with 1s, bits 10-209 are normal, bits 210-229 are 0s.
   std::array<uint64_t, 4> cells;
   std::array<uint64_t*, 20> rows;
+  int maxCol;
+  int maxColTmp;
 public:
   Board();
   bool getCell(int x, int y) const; // not bad yet?

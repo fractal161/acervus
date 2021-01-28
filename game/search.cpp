@@ -30,19 +30,11 @@ BasicDfs::BasicDfs(){
 }
 
 void BasicDfs::search(std::vector<Piece>& places, const Board& board, Piece& piece){
-  // Part 1: Dfs the SHIT out of this.
   // Check if position is valid, and if so mark as visited.
   int x = piece.getX();
   int y = piece.getY();
   int orient = piece.getOrient();
-  // std::cout << "Searching " << x << " " << y << " " << orient << "\n";
-  // std::cout << "Visited: " << visited[piece.getX()][piece.getY()][piece.getOrient()] << "\n";
-  // std::cout << "Overlap: " << board.overlap(piece) << "\n";
-  // if(!board.isEmpty()){
-  //   std::cout << "NOT EMPTY\n";
-  // }
   if(board.overlap(piece) || visited[x][y][orient]){
-    // std::cout << "STOP\n";
     return;
   }
   visited[x][y][orient] = true;
@@ -57,18 +49,16 @@ void BasicDfs::search(std::vector<Piece>& places, const Board& board, Piece& pie
 
   // Given position, search all other rotation, then left+right (not composite)
   piece.shift(1);
-  // std::cout << "Right of " << x << " " << y << " " << orient << "\n";
   search(places, board, piece);
   piece.shift(-2);
-  // std::cout << "Left of " << x << " " << y << " " << orient << "\n";
   search(places, board, piece);
   piece.shift(1);
   //Rotate a ton.
-  for(int i = 0; i < piece.numOrients(); i++){
-    // std::cout << "Rotating " << x << " " << y << " " << orient << "\n";
-    piece.rotate(1);
-    search(places, board, piece);
-  }
+  piece.rotate(1);
+  search(places, board, piece);
+  piece.rotate(2);
+  search(places, board, piece);
+  piece.rotate(1);
 }
 
 void BasicDfs::clean(){

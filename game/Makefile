@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I . -lstdc++ -lm -std=c++14 -O3 -lgmp -lgmpxx
+CFLAGS=-I . -lstdc++ -lm -std=c++14 -O3 -lgmp -lgmpxx -march=native
 PFLAGS=-pg -fsanitize=undefined
 DEPS=gameState.hpp gameParts.hpp search.hpp controller.hpp ../rank/surfaces.hpp
 

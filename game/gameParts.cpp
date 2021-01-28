@@ -3,7 +3,6 @@
 
 Piece::Piece(){
   type = -1;
-  // pos = {{-1, 0, 0}};
   x = -1;
   y = 0;
   orient = 0;
@@ -11,7 +10,6 @@ Piece::Piece(){
 
 Piece::Piece(int nType){
   type = nType;
-  // pos = {{5, 0, 0}};
   x = 5;
   y = 0;
   orient = 0;
@@ -20,7 +18,7 @@ Piece::Piece(int nType){
 Piece::~Piece(){}
 
 int Piece::numOrients() const{
-  return nOrients[type];
+  return orientMasks[type] + 1;
 }
 
 const std::array<std::pair<int, int>,4>& Piece::getOffs() const{
@@ -32,6 +30,9 @@ int Piece::getX() const{
 int Piece::getY() const{
   return y;
 }
+int Piece::getType() const{
+  return type;
+}
 int Piece::getOrient() const{
   return orient;
 }
@@ -39,7 +40,7 @@ void Piece::shift(int off){
   x += off;
 }
 void Piece::rotate(int amt){
-  orient = (orient + amt) % nOrients[type];
+  orient = (orient + amt) & orientMasks[type];
 }
 void Piece::drop(int off){
   y += off;
@@ -58,6 +59,11 @@ void Piece::operator =(const Piece& p){
 }
 
 bool Piece::inBounds() const{
+  // std::cout << x << " " << y <<  std::endl;
+  // if(x < 0) return false;
+  // const std::pair<int, int>& lims = pLimits2[type][orient];
+  // return ((1 << y) & lims.first) != 0 && ((1 << x) & lims.second) != 0;
+
   const std::array<int, 4>& lims = pLimits[type][orient];
   return x >= lims[2] &&
     x <= lims[3] - 1 && // CHANGED
@@ -68,10 +74,8 @@ bool Piece::inBounds() const{
 //
 uint64_t Piece::getBits() const{
   uint64_t bits = pBits[type][orient];
-  if(x < 2){
-    return (bits << (2 - x));
-  }
-  return (bits >> (x - 2));
+  // bits <<= 2;
+  return bits >> x;
 }
 
 Board::Board(){
@@ -81,6 +85,8 @@ Board::Board(){
     // Assign pointers to each row+stuff above row
     rows[i] = (uint64_t*)(((uint8_t*) rows[0]) + (5 * i) / 4);
   }
+  maxCol = 0;
+  maxColTmp = 0;
 }
 
 bool Board::getCell(int x, int y) const{
@@ -100,16 +106,6 @@ void Board::setCell(int x, int y, bool value){
     uint64_t mask = ~((uint64_t) 1 << (index & 63));
     cells[(index >> 6)] &= mask;
   }
-  // uint64_t* row = rows[19 - y];
-  // int offset = ((19 - y) << 1) & 7;
-  // if(value){
-  //   uint64_t mask = 1 << (19 - x + offset);
-  //   *row |= mask;
-  // }
-  // else{
-  //   uint64_t mask = ~(1 << (19 - x + offset));
-  //   *row &= mask;
-  // }
 }
 
 void printRows(uint64_t thing, int n){
@@ -129,9 +125,9 @@ void printRows(uint64_t thing, int n){
 bool Board::overlap(const Piece& piece) const{
   if(!piece.inBounds()) return true;
 
-  const uint64_t bits = piece.getBits();
+  // const uint64_t bits = ;
   int tmp = 19 - piece.getY();
-  return (*rows[tmp] >> (((tmp) << 1) & 7)) & bits;
+  return (*rows[tmp] >> (((tmp) << 1) & 7)) & piece.getBits();
 }
 
 
@@ -142,6 +138,8 @@ void Board::place(const Piece& piece){
   int offset = ((tmp) << 1) & 7;
   *rows[tmp] |= bits << offset;
   cells[3] &= 0x1FFFF;
+  maxColTmp = maxCol;
+  maxCol = std::max(maxCol, tmp + pHeights[piece.getType()][piece.getOrient()]);
 }
 
 void Board::remove(const Piece& piece){
@@ -149,6 +147,7 @@ void Board::remove(const Piece& piece){
   int tmp = 19 - piece.getY();
   int offset = ((tmp) << 1) & 7;
   *rows[tmp] &= ~(bits << offset);
+  maxCol = maxColTmp;
 }
 
 bool Board::isEmpty() const{
@@ -166,14 +165,9 @@ bool Board::isEmpty() const{
 int Board::clearRows(){
   int clear = 0;
   for(int i = HEIGHT - 1; i >= 0; i--){
-    bool full = true;
-    for(int j = 0; j < WIDTH - 1; j++){ // CHANGED
-      if(!getCell(j, i)){
-        full = false;
-        break;
-      }
-    }
-    if(full){
+    int tmp = 19 - i;
+
+    if(((*rows[tmp] >> (10 + ((tmp << 1) & 7))) & 0x3FE) == 0x3FE){
       for(int j = i; j > 0; j--){
         for(int k = 0; k < WIDTH; k++){
           setCell(k, j, getCell(k, j - 1));
@@ -186,6 +180,7 @@ int Board::clearRows(){
       i++;
     }
   }
+  maxCol -= clear;
   return clear;
 }
 
@@ -193,7 +188,7 @@ void Board::toSurface(int* bumps){
   // int* bumps = new int[WIDTH - 2];
   // First column height.
   int col = 0;
-  for(int i = 0; i < HEIGHT; i++){
+  for(int i = HEIGHT - maxCol - 1; i < HEIGHT; i++){
     if(getCell(0, i)){
       col = HEIGHT - i;
       break;
@@ -202,7 +197,7 @@ void Board::toSurface(int* bumps){
   // Column deltas
   for(int j = 1; j < WIDTH - 1; j++){
     int nCol = 0;
-    for(int i = 0; i < HEIGHT; i++){
+    for(int i = HEIGHT - maxCol - 1; i < HEIGHT; i++){
       if(getCell(j, i)){
         nCol = HEIGHT - i;
         break;
@@ -211,7 +206,6 @@ void Board::toSurface(int* bumps){
     bumps[j - 1] = nCol - col;
     col = nCol;
   }
-  // return bumps;
 }
 
 // #define DEBUG
