@@ -9,12 +9,13 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <cstdlib>
 
 const unsigned int NUM_SURFACES = std::pow(9, SURFACE_WIDTH - 1) * 7; //Maybe long long?
 const unsigned int RANK_SIZE = NUM_SURFACES * sizeof(float);
 const char* FILE_NAME = "../data/ranksEv9.1";
 const float initRank = 0.0f;
-const int nThreads = 4;
+const int nThreads = 5;
 
 // Surface * 7 + pieceType
 
@@ -41,6 +42,7 @@ public:
 void setRanks(int start, int end, int row, RankStats* stats);
 float rank2(int iter, int stack);
 void rankOrient2(int iter, int* surface, int piece, int orientation, int pos, float* pieceRanks);
+void printTopNSurfaces(int n, int iters);
 
 int main(int argc, char* argv[]){
   int fd = open(FILE_NAME, O_RDWR|O_CREAT, 0666);
@@ -113,6 +115,7 @@ int main(int argc, char* argv[]){
     std::cout << "Iteration " << (i + 1) << " completed\n";
     std::cout << "Duration: " << std::chrono::duration_cast<pSeconds>(endTime - startTime).count() << "s\n";
     stats[0].print();
+    printTopNSurfaces(2, i + 1);
     delete[] stats;
 
     startTime = endTime;
@@ -123,22 +126,7 @@ int main(int argc, char* argv[]){
     std::chrono::duration_cast<pSeconds>(trueEnd - trueStart).count() << "s\n\n";
 
   // List n best surfaces.
-  int n = 20;
-  float lastMax = 1.0e9;
-  std::cout << "Top " << n << " surfaces\n\n";
-  for(int i = 0; i < n; i++){
-    float nextMax = 0.0;
-    int nextStack = 0;
-    for(int j = 0; j < NUM_SURFACES; j++){
-      if(ranks[iters % 2][j] > nextMax && ranks[iters % 2][j] < lastMax){
-        nextMax = ranks[iters % 2][j];
-        nextStack = j;
-      }
-    }
-    std::cout << printSurfaceAndPiece(intToSurface(nextStack / 7), nextStack % 7) << "\n" << nextMax << "\n\n";
-    lastMax = nextMax;
-  }
-
+  printTopNSurfaces(20, iters);
   if(mapped) munmap(ranks[0], RANK_SIZE);
 
   // Write final ranks to file if necessary
@@ -167,8 +155,8 @@ void RankStats::print(){
   std::cout << "Max error: " << maxErr << "\n";
   std::cout << "Avg error: " << avgErr << "\n";
   std::cout << "Standard deviation: " << stdErr << "\n\n";
-  std::cout << "Best surface:\n";
-  std::cout << printSurfaceAndPiece(intToSurface(bestSurface / 7), bestSurface % 7) << "\n" << bestRank << std::endl;
+  // std::cout << "Best surface:\n";
+  // std::cout << printSurfaceAndPiece(intToSurface(bestSurface / 7), bestSurface % 7) << "\n" << bestRank << std::endl;
 }
 
 void RankStats::update(int row, int surface){
@@ -220,10 +208,10 @@ float rank2(int iter, int stack){
     }
     for(int i = 0; i < SURFACE_WIDTH - 2; i++){
       if(surface[i] == 0 && surface[i + 1] == 0){
-        rankOrient2(iter, surface, T, 0, i, pieceRanks);
+        rankOrient2(iter, surface, T, 2, i, pieceRanks);
       }
       if(surface[i] == -1 && surface[i + 1] == 1){
-        rankOrient2(iter, surface, T, 2, i, pieceRanks);
+        rankOrient2(iter, surface, T, 0, i, pieceRanks);
       }
     }
     break;
@@ -248,7 +236,7 @@ float rank2(int iter, int stack){
     case Z:
     for(int i = 0; i < SURFACE_WIDTH - 1; i++){
       if(surface[i] == 1){
-        rankOrient2(iter, surface, T, 1, i, pieceRanks);
+        rankOrient2(iter, surface, Z, 1, i, pieceRanks);
       }
     }
     for(int i = 0; i < SURFACE_WIDTH - 2; i++){
@@ -303,6 +291,7 @@ float rank2(int iter, int stack){
     }
     rankOrient2(iter, surface, I, 1, SURFACE_WIDTH - 3, pieceRanks);
     rankOrient2(iter, surface, I, 1, SURFACE_WIDTH - 2, pieceRanks);
+    rankOrient2(iter, surface, I, 1, SURFACE_WIDTH - 1, pieceRanks);
     break;
   }
 
@@ -315,7 +304,7 @@ float rank2(int iter, int stack){
 void rankOrient2(int iter, int * surface, int piece, int orientation, int pos, float* pieceRanks){
   iter = (iter + 1) % 2;
   int* newSurface = addPieceToSurface(surface, piece, orientation, pos, false);
-  if(newSurface != nullptr && validSurface(newSurface)){
+  if(validSurface(newSurface)){
     int newNum = surfaceToInt(newSurface);
     // float newRank = ranks[iter][newNum];
     // pieceRanks[piece] = std::max(pieceRanks[piece], newRank);
@@ -324,4 +313,38 @@ void rankOrient2(int iter, int * surface, int piece, int orientation, int pos, f
     }
   }
   delete[] newSurface;
+}
+
+void printTopNSurfaces(int n, int iters){
+  // int n = 20;
+  int tie = 1;
+  float lastMax = 1.0e9;
+  std::cout << "Top " << n << " surfaces\n\n";
+  for(int i = 0; i < n; i++){
+    float nextMax = 0.0;
+    int nextStack = 0;
+    int tCount = 0;
+    for(int j = 0; j < NUM_SURFACES; j++){
+      if(ranks[iters % 2][j] > nextMax){
+        if(ranks[iters % 2][j] == lastMax){
+          tCount++;
+          if(tCount > tie){
+            nextMax = ranks[iters % 2][j];
+            nextStack = j;
+            tie++;
+            break;
+          }
+        }
+        if(ranks[iters % 2][j] < lastMax){
+          nextMax = ranks[iters % 2][j];
+          nextStack = j;
+        }
+      }
+    }
+    if(nextMax < lastMax){
+      tie = 1;
+    }
+    std::cout << printSurfaceAndPiece(intToSurface(nextStack / 7), nextStack % 7) << "\n" << nextMax << "\n\n";
+    lastMax = nextMax;
+  }
 }

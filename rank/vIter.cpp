@@ -122,16 +122,32 @@ int main(int argc, char* argv[]){
 
   // List n best surfaces.
   int n = 20;
+  int tie = 1;
   float lastMax = 1.0e9;
   std::cout << "Top " << n << " surfaces\n\n";
   for(int i = 0; i < n; i++){
     float nextMax = 0.0;
     int nextStack = 0;
+    int tCount = 0;
     for(int j = 0; j < NUM_SURFACES; j++){
-      if(ranks[iters % 2][j] > nextMax && ranks[iters % 2][j] < lastMax){
-        nextMax = ranks[iters % 2][j];
-        nextStack = j;
+      if(ranks[iters % 2][j] > nextMax){
+        if(ranks[iters % 2][j] == lastMax){
+          tCount++;
+          if(tCount > tie){
+            nextMax = ranks[iters % 2][j];
+            nextStack = j;
+            tie++;
+            break;
+          }
+        }
+        if(ranks[iters % 2][j] < lastMax){
+          nextMax = ranks[iters % 2][j];
+          nextStack = j;
+        }
       }
+    }
+    if(nextMax < lastMax){
+      tie = 1;
     }
     std::cout << printSurface(intToSurface(nextStack)) << "\n" << nextMax << "\n\n";
     lastMax = nextMax;
@@ -232,12 +248,12 @@ float rank2(int iter, int stack){
   }
   for(int i = 0; i < SURFACE_WIDTH - 2; i++){
     if(surface[i] == 0 && surface[i + 1] == 0){
-      rankOrient2(iter, surface, T, 0, i, pieceRanks);
+      rankOrient2(iter, surface, T, 2, i, pieceRanks);
       rankOrient2(iter, surface, J, 2, i, pieceRanks);
       rankOrient2(iter, surface, L, 2, i, pieceRanks);
     }
     if(surface[i] == -1 && surface[i + 1] == 1){
-      rankOrient2(iter, surface, T, 2, i, pieceRanks);
+      rankOrient2(iter, surface, T, 0, i, pieceRanks);
     }
     if(surface[i] == 0 && surface[i + 1] == -1){
       rankOrient2(iter, surface, J, 0, i, pieceRanks);
@@ -268,7 +284,7 @@ float rank2(int iter, int stack){
 void rankOrient2(int iter, int* surface, int piece, int orientation, int pos, float*pieceRanks){
   iter = (iter + 1) % 2;
   int* newSurface = addPieceToSurface(surface, piece, orientation, pos, false);
-  if(newSurface != nullptr && validSurface(newSurface)){
+  if(validSurface(newSurface)){
     int newNum = surfaceToInt(newSurface);
     float newRank = ranks[iter][newNum];
     pieceRanks[piece] = std::max(pieceRanks[piece], newRank);
